@@ -305,38 +305,39 @@ export default function Menu() {
 
       {/* Premium Floating Cart Button */}
       {totalItems > 0 && (
-        <Link
-          to={`/cart${table ? `?table=${table}` : ""}`}
-          className="fixed bottom-6 left-4 right-4 z-50 max-w-2xl mx-auto"
-        >
-          <div className="relative group">
-            {/* Glow Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
-            
-            {/* Main Button */}
-            <div className="relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl px-6 py-5 flex justify-between items-center shadow-2xl transition-all transform group-hover:scale-[1.02] active:scale-95 mb-17">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <ShoppingCart className="w-7 h-7" />
-                  <span className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
-                    {totalItems}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-bold text-lg">
-                    {totalItems} item{totalItems > 1 ? "s" : ""} added
-                  </p>
-                  <p className="text-emerald-100 text-sm font-medium">Tap to review order</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl">
-                <span className="font-bold text-lg">View Cart</span>
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          </div>
-        </Link>
+      <Link
+  to={`/cart${table ? `?table=${table}` : ""}`}
+  className="fixed bottom-4 left-3 right-3 z-50 max-w-md mx-auto"
+>
+  <div className="relative group">
+    {/* Glow Effect */}
+    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
+
+    {/* Main Button */}
+    <div className="relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl px-4 py-3 flex justify-between items-center shadow-lg transition-all transform group-hover:scale-[1.01] active:scale-95 mb-19">
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <ShoppingCart className="w-6 h-6" />
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
+            {totalItems}
+          </span>
+        </div>
+        <div>
+          <p className="font-bold text-base">
+            {totalItems} item{totalItems > 1 ? "s" : ""}
+          </p>
+          <p className="text-emerald-100 text-xs font-medium">Tap to review</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+        <span className="font-semibold text-base">View Cart</span>
+        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </div>
+    </div>
+  </div>
+</Link>
+
       )}
     </div>
   );
