@@ -1,6 +1,25 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
+/* ---------- Veg / Non-Veg Icon ---------- */
+function FoodTypeIcon({ type }) {
+  const isVeg = type === "veg";
+
+  return (
+    <div
+      className={`w-5 h-5 border-2 flex items-center justify-center rounded-sm
+        ${isVeg ? "border-green-600" : "border-red-600"}
+      `}
+    >
+      <div
+        className={`w-2.5 h-2.5 rounded-full
+          ${isVeg ? "bg-green-600" : "bg-red-600"}
+        `}
+      />
+    </div>
+  );
+}
+
 export default function ProductCard({ product, onAdd }) {
   const {
     name,
@@ -8,6 +27,7 @@ export default function ProductCard({ product, onAdd }) {
     price,
     image,
     available = true,
+    type = "veg",
   } = product;
 
   const [added, setAdded] = useState(false);
@@ -15,22 +35,20 @@ export default function ProductCard({ product, onAdd }) {
 
   const handleAdd = (e) => {
     e.stopPropagation();
-
     if (!available) return;
 
-    // Trigger visual feedback
     setAdded(true);
     setShowCheck(true);
-
-    // Call the actual add to cart
     onAdd();
-
-    // Reset checkmark after animation
     setTimeout(() => setShowCheck(false), 800);
   };
 
   return (
-    <div className="relative rounded-3xl overflow-hidden bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <motion.div
+      className={`relative rounded-3xl overflow-hidden bg-white shadow-lg hover:shadow-xl transition-shadow duration-300`}
+      animate={available ? {} : { x: [0, -5, 5, -5, 5, 0] }}
+      transition={{ duration: 0.6 }}
+    >
       <div className="relative aspect-[4/5]">
 
         {/* Image */}
@@ -38,20 +56,36 @@ export default function ProductCard({ product, onAdd }) {
           src={image || "https://via.placeholder.com/600x800"}
           alt={name}
           className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ${
-            !available ? "grayscale" : ""
+            !available ? "grayscale contrast-90" : ""
           }`}
         />
 
-        {/* OUT OF STOCK Overlay */}
-        {!available && (
-          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-            <span className="bg-red-600 text-white px-8 py-4 rounded-full text-xl font-bold shadow-lg">
-              Out of Stock
-            </span>
-          </div>
-        )}
+        {/* Veg / Non-Veg Icon */}
+        <div className="absolute top-3 left-3 z-30 bg-white/90 backdrop-blur-md p-1 rounded-md shadow">
+          <FoodTypeIcon type={type} />
+        </div>
 
-        {/* Added Quantity Badge (Top Right) */}
+        {/* OUT OF STOCK Overlay */}
+        <AnimatePresence>
+          {!available && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/70 "
+            >
+              <motion.div
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ repeat: Infinity, duration: 1.2 }}
+                className="bg-gradient-to-r  px-8 py-4 rounded-full shadow-2xl text-white font-bold text-xl md:text-2xl text-center"
+              >
+                Out of Stock
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Added Badge */}
         <AnimatePresence>
           {added && available && (
             <motion.div
@@ -67,7 +101,7 @@ export default function ProductCard({ product, onAdd }) {
           )}
         </AnimatePresence>
 
-        {/* Bottom Info Gradient */}
+        {/* Bottom Gradient */}
         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-5 pt-10">
           <h3 className="text-white text-lg font-bold line-clamp-2">{name}</h3>
 
@@ -82,14 +116,14 @@ export default function ProductCard({ product, onAdd }) {
               ₹{price}
             </span>
 
-            {/* Enhanced + Button */}
+            {/* Add Button */}
             {available && (
               <motion.button
                 onClick={handleAdd}
                 whileTap={{ scale: 0.85 }}
                 className="relative bg-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl overflow-hidden"
               >
-                {/* Ripple Effect */}
+                {/* Ripple */}
                 <AnimatePresence>
                   {showCheck && (
                     <motion.div
@@ -102,7 +136,7 @@ export default function ProductCard({ product, onAdd }) {
                   )}
                 </AnimatePresence>
 
-                {/* Icon: + → ✓ */}
+                {/* + → ✓ */}
                 <AnimatePresence mode="wait">
                   {showCheck ? (
                     <motion.span
@@ -117,8 +151,6 @@ export default function ProductCard({ product, onAdd }) {
                   ) : (
                     <motion.span
                       key="plus"
-                      initial={{ scale: 1 }}
-                      animate={{ scale: 1 }}
                       className="text-green-600 text-3xl font-bold z-10"
                     >
                       +
@@ -130,6 +162,6 @@ export default function ProductCard({ product, onAdd }) {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

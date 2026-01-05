@@ -184,7 +184,7 @@ export default function OrderSummary() {
       </main>
 
       {/* BOTTOM ACTION */}
-      <div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t shadow-2xl px-4 py-4">
+<div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t shadow-2xl px-4 py-4 mb-20 md:mb-0">
         <div className="max-w-md mx-auto">
           <Link
             to={`/menu?table=${order.table}`}

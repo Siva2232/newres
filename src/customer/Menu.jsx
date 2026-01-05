@@ -2,7 +2,7 @@ import { useProducts } from "../context/ProductContext";
 import { useCart } from "../context/CartContext";
 import ProductCard from "../components/ProductCard";
 import { useSearchParams, Link } from "react-router-dom";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Search, X, ShoppingCart, Utensils, Sparkles, ChevronRight } from "lucide-react";
 
 export default function Menu() {
@@ -11,9 +11,9 @@ export default function Menu() {
   const [searchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
   const [slide, setSlide] = useState(0);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const sectionRefs = useRef({});
 
   // Premium restaurant carousel images
   const slides = [
@@ -64,26 +64,35 @@ export default function Menu() {
     return ["All", ...new Set(cats)];
   }, [products]);
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      if (selectedCategory !== "All" && p.category !== selectedCategory)
-        return false;
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
-          p.name?.toLowerCase().includes(q) ||
-          p.description?.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [products, selectedCategory, searchQuery]);
-
   const totalItems = cart.reduce(
     (sum, item) => sum + (item.qty || item.quantity || 1),
     0
   );
+
+  /* Search Suggestions (Autocomplete Dropdown) */
+  const suggestions = useMemo(() => {
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) return [];
+
+    const q = trimmed.toLowerCase();
+
+    let matches = products.filter((p) => {
+      const name = p.name?.toLowerCase() || "";
+      const desc = p.description?.toLowerCase() || "";
+      return name.includes(q) || desc.includes(q);
+    });
+
+    // Prioritize matches that start with the query
+    matches.sort((a, b) => {
+      const aName = a.name?.toLowerCase() || "";
+      const bName = b.name?.toLowerCase() || "";
+      if (aName.startsWith(q) && !bName.startsWith(q)) return -1;
+      if (!aName.startsWith(q) && bName.startsWith(q)) return 1;
+      return aName.localeCompare(bName);
+    });
+
+    return matches.slice(0, 10);
+  }, [products, searchQuery]);
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-orange-50 to-amber-50 flex flex-col">
@@ -112,7 +121,7 @@ export default function Menu() {
             )}
           </div>
 
-          {/* Enhanced Search Bar */}
+          {/* Enhanced Search Bar with Suggestions Dropdown */}
           <div className="relative group">
             <div className={`absolute inset-0 bg-gradient-to-r from-orange-400 to-pink-400 rounded-2xl blur-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${isSearchFocused ? 'opacity-30' : ''}`}></div>
             <div className="relative">
@@ -135,36 +144,97 @@ export default function Menu() {
                 </button>
               )}
             </div>
+
+            {/* Suggestions Dropdown */}
+            {searchQuery.trim().length >= 2 && (
+              <div className="absolute left-0 right-0 top-full mt-2 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50">
+                {suggestions.length > 0 ? (
+                  <ul className="max-h-96 overflow-y-auto">
+                    {suggestions.map((product) => (
+                      <li
+                        key={product.id}
+                        onMouseDown={(e) => e.preventDefault()} // Prevent input blur before click
+                        onClick={() => setSearchQuery(product.name)} // Click item → filter to this dish
+                        className="flex items-center gap-4 px-6 py-4 hover:bg-gradient-to-r hover:from-orange-50 hover:to-pink-50 cursor-pointer transition-all border-b border-slate-100 last:border-none"
+                      >
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-14 h-14 rounded-xl object-cover shadow-md flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-gradient-to-br from-orange-200 to-pink-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Utensils className="w-8 h-8 text-white/70" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-800 truncate">{product.name}</p>
+                          {product.description && (
+                            <p className="text-sm text-slate-500 line-clamp-2">{product.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-orange-600">
+                            ${typeof product.price === "number" ? product.price.toFixed(2) : "N/A"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Don't trigger item click
+                            if (product.available !== false) {
+                              addToCart(product);
+                            }
+                            setSearchQuery(""); // Clear search after quick add
+                          }}
+                          disabled={product.available === false}
+                          className="ml-4 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-bold rounded-full shadow-lg hover:scale-105 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Add
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="px-6 py-10 text-center">
+                    <p className="text-slate-500 text-sm">
+                      No dishes found for "<span className="font-medium">{searchQuery}</span>"
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">Try a different spelling or browse categories</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Enhanced Categories with Icons */}
+          {/* Category Navigation Buttons (jump to sections) */}
           <div className="mt-5 -mx-4 px-4 overflow-x-auto scrollbar-hide">
             <div className="flex gap-3 pb-2">
               {categories.map((cat, idx) => (
                 <button
                   key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`group relative px-6 py-3 rounded-2xl text-sm font-bold whitespace-nowrap transition-all duration-300 ${
-                    selectedCategory === cat
-                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-xl scale-105"
-                      : "bg-white text-slate-700 hover:bg-slate-50 shadow-md hover:shadow-lg border border-slate-200"
-                  }`}
-                  style={{
-                    animationDelay: `${idx * 50}ms`
+                  onClick={() => {
+                    if (cat === "All") {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    } else {
+                      const section = sectionRefs.current[cat];
+                      if (section) {
+                        section.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }
+                    }
                   }}
+                  className="group relative px-6 py-3 rounded-2xl text-sm font-bold whitespace-nowrap transition-all duration-300 bg-white text-slate-700 hover:bg-slate-50 shadow-md hover:shadow-lg border border-slate-200 hover:scale-105"
+                  style={{ animationDelay: `${idx * 50}ms` }}
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     {cat === "All" && "🍽️"}
-                    {cat === "Appetizers" && "🥗"}
-                    {cat === "Main Course" && "🍛"}
+                    {(cat === "Appetizers" || cat === "Starters") && "🥗"}
+                    {(cat === "Main Course" || cat === "Mains") && "🍛"}
                     {cat === "Desserts" && "🍰"}
-                    {cat === "Beverages" && "🍹"}
+                    {(cat === "Beverages" || cat === "Drinks") && "🍹"}
                     {cat === "Snacks" && "🍟"}
                     {cat}
                   </span>
-                  {selectedCategory === cat && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-red-600 rounded-2xl blur-xl opacity-50 -z-10"></div>
-                  )}
                 </button>
               ))}
             </div>
@@ -245,99 +315,134 @@ export default function Menu() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content – Multiple dedicated sections */}
       <main className="flex-1 overflow-y-auto pb-32 px-4 sm:px-6 max-w-7xl mx-auto w-full">
-        {/* Section Header */}
-        <div className="mt-8 mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-3">
-              {selectedCategory}
-              <span className="text-base font-normal text-slate-500">
-                ({filteredProducts.length})
-              </span>
-            </h2>
-            <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Fresh dishes available now
-            </p>
-          </div>
-        </div>
+        <div className="py-8">
+          {(() => {
+            const q = searchQuery.toLowerCase().trim();
+            const hasSearch = q.length > 0;
+            const sections = [];
+            let hasAnyMatch = false;
 
-        {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mb-6">
-              <Search className="w-16 h-16 text-slate-400" />
-            </div>
-            <h3 className="text-2xl font-bold text-slate-700 mb-2">No dishes found</h3>
-            <p className="text-slate-500 mb-6">Try adjusting your search or browse other categories</p>
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("All");
-              }}
-              className="bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
-            >
-              View All Dishes
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {filteredProducts.map((product, idx) => (
-              <div
-                key={product.id}
-                style={{
-                  animationDelay: `${idx * 50}ms`,
-                  animationFillMode: 'both'
-                }}
-                className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-              >
-                <ProductCard
-                  product={product}
-                  searchQuery={searchQuery}
-                  onAdd={() => product.available && addToCart(product)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+            const catList = categories
+              .filter((c) => c !== "All")
+              .sort((a, b) => a.localeCompare(b));
+
+            catList.forEach((cat) => {
+              const catProducts = products.filter((p) => (p.category || "Other") === cat);
+
+              const displayedProducts = hasSearch
+                ? catProducts.filter(
+                    (p) =>
+                      (p.name || "").toLowerCase().includes(q) ||
+                      (p.description || "").toLowerCase().includes(q)
+                  )
+                : catProducts;
+
+              if (displayedProducts.length > 0) {
+                hasAnyMatch = true;
+
+                sections.push(
+                  <section
+                    key={cat}
+                    ref={(el) => el && (sectionRefs.current[cat] = el)}
+                    className="mb-16 scroll-mt-40"
+                  >
+                    <div className="mb-6 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-3">
+                          {(cat === "Appetizers" || cat === "Starters") && "🥗 "}
+                          {(cat === "Main Course" || cat === "Mains") && "🍛 "}
+                          {cat === "Desserts" && "🍰 "}
+                          {(cat === "Beverages" || cat === "Drinks") && "🍹 "}
+                          {cat === "Snacks" && "🍟 "}
+                          {cat}
+                          <span className="text-base font-normal text-slate-500">
+                            ({displayedProducts.length})
+                          </span>
+                        </h2>
+                        <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                          Fresh dishes available now
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                      {displayedProducts.map((product, idx) => (
+                        <div
+                          key={product.id}
+                          style={{ animationDelay: `${idx * 50}ms` }}
+                          className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                        >
+                          <ProductCard
+                            product={product}
+                            searchQuery={searchQuery}
+                            onAdd={() => product.available && addToCart(product)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              }
+            });
+
+            if (hasSearch && !hasAnyMatch) {
+              sections.push(
+                <div key="no-results" className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-32 h-32 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mb-6">
+                    <Search className="w-16 h-16 text-slate-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-700 mb-2">No dishes found</h3>
+                  <p className="text-slate-500 mb-6">Try adjusting your search or browse the categories</p>
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                  >
+                    Clear Search
+                  </button>
+                </div>
+              );
+            }
+
+            return sections;
+          })()}
+        </div>
       </main>
 
       {/* Premium Floating Cart Button */}
       {totalItems > 0 && (
-      <Link
-  to={`/cart${table ? `?table=${table}` : ""}`}
-  className="fixed bottom-4 left-3 right-3 z-50 max-w-md mx-auto"
->
-  <div className="relative group">
-    {/* Glow Effect */}
-    <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
+        <Link
+          to={`/cart${table ? `?table=${table}` : ""}`}
+          className="fixed bottom-4 left-3 right-3 z-50 max-w-md mx-auto"
+        >
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity animate-pulse"></div>
 
-    {/* Main Button */}
-    <div className="relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl px-4 py-3 flex justify-between items-center shadow-lg transition-all transform group-hover:scale-[1.01] active:scale-95 mb-19">
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <ShoppingCart className="w-6 h-6" />
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
-            {totalItems}
-          </span>
-        </div>
-        <div>
-          <p className="font-bold text-base">
-            {totalItems} item{totalItems > 1 ? "s" : ""}
-          </p>
-          <p className="text-emerald-100 text-xs font-medium">Tap to review</p>
-        </div>
-      </div>
+            <div className="relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl px-4 py-3 flex justify-between items-center shadow-lg transition-all transform group-hover:scale-[1.01] active:scale-95">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <ShoppingCart className="w-6 h-6" />
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
+                    {totalItems}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-bold text-base">
+                    {totalItems} item{totalItems > 1 ? "s" : ""}
+                  </p>
+                  <p className="text-emerald-100 text-xs font-medium">Tap to review</p>
+                </div>
+              </div>
 
-      <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-        <span className="font-semibold text-base">View Cart</span>
-        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-      </div>
-    </div>
-  </div>
-</Link>
-
+              <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                <span className="font-semibold text-base">View Cart</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </div>
+        </Link>
       )}
     </div>
   );
