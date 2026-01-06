@@ -4,6 +4,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "../admin/AdminLayout";
 import CustomerLayout from "../customer/CustomerLayout";
 
+/* Auth */
+import Login from "../admin/Login";
+import ProtectedRoute from "./ProtectedRoute";
+
 /* Admin Pages */
 import Dashboard from "../admin/Dashboard";
 import Products from "../admin/Products";
@@ -17,31 +21,55 @@ import Cart from "../customer/Cart";
 import OrderStatus from "../customer/OrderStatus";
 import OrderSummary from "../customer/OrderSummary";
 
+/* Optional: Prevent logged-in users from seeing login */
+const ProtectedLogin = ({ children }) => {
+  const isLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true";
+  if (isLoggedIn) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return children;
+};
+
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* ---------- CUSTOMER ---------- */}
-     <Route element={<CustomerLayout />}>
-  <Route path="/menu" element={<Menu />} />
-  <Route path="/cart" element={<Cart />} />
-  <Route path="/order-status/:orderId" element={<OrderStatus />} />
-  <Route path="/order-summary" element={<OrderSummary />} />
-</Route>
+      {/* Root redirect */}
+      <Route path="/" element={<Navigate to="/menu" replace />} />
 
+      {/* Login */}
+      <Route
+        path="/login"
+        element={
+          <ProtectedLogin>
+            <Login />
+          </ProtectedLogin>
+        }
+      />
 
-      {/* ---------- ADMIN ---------- */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="products" element={<Products />} />
-        <Route path="/admin/products/add" element={<AddProduct />} />
-
-        <Route path="orders" element={<Orders />} />
-        <Route path="tables" element={<Tables />} />
+      {/* Customer Routes */}
+      <Route element={<CustomerLayout />}>
+        <Route path="/menu" element={<Menu />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/order-status/:orderId" element={<OrderStatus />} />
+        <Route path="/order-summary" element={<OrderSummary />} />
+        <Route path="*" element={<Navigate to="/menu" replace />} />
       </Route>
 
-      {/* ---------- FALLBACK ---------- */}
-      <Route path="*" element={<Navigate to="/menu" />} />
+      {/* Protected Admin Routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="products" element={<Products />} />
+          <Route path="products/add" element={<AddProduct />} />
+          <Route path="orders" element={<Orders />} />
+          <Route path="tables" element={<Tables />} />
+          <Route path="*" element={<Navigate to="dashboard" replace />} />
+        </Route>
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/menu" replace />} />
     </Routes>
   );
 }
